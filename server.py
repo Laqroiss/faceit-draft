@@ -4,6 +4,7 @@ import json
 import urllib.error
 import urllib.parse
 import urllib.request
+import time
 
 ROOT = __import__('pathlib').Path(__file__).parent
 
@@ -22,15 +23,19 @@ class Handler(BaseHTTPRequestHandler):
             req = json.loads(self.rfile.read(int(self.headers.get('Content-Length','0'))))
             token = req.get('api_key','').strip(); names = req.get('players',[]); game = req.get('game','cs2'); limit = max(1,min(1000,int(req.get('match_limit',300))))
             if not token: raise ValueError('Укажите FACEIT API key.')
-            if not names or len(names)>40: raise ValueError('Добавьте от 1 до 40 участников.')
+            if not names or len(names)>80: raise ValueError('Добавьте от 1 до 80 участников.')
             headers={'Authorization':'Bearer '+token,'Accept':'application/json'}
             def get(url):
-                r=urllib.request.Request(url,headers=headers)
-                try:
-                    with urllib.request.urlopen(r,timeout=25) as x: return json.loads(x.read())
-                except urllib.error.HTTPError as e:
-                    msg={401:'Неверный или отозванный API key.',403:'FACEIT запретил доступ к этому ресурсу.',404:'Игрок или данные не найдены.',429:'Лимит запросов FACEIT. Повторите позже.'}.get(e.code,'Ошибка FACEIT API ('+str(e.code)+').')
-                    raise ValueError(msg)
+                for attempt in range(4):
+                    r=urllib.request.Request(url,headers=headers)
+                    try:
+                        with urllib.request.urlopen(r,timeout=25) as x: return json.loads(x.read())
+                    except urllib.error.HTTPError as e:
+                        if e.code==429 and attempt<3:
+                            time.sleep(2**attempt)
+                            continue
+                        msg={401:'Неверный или отозванный API key.',403:'FACEIT запретил доступ к этому ресурсу.',404:'Игрок или данные не найдены.',429:'FACEIT продолжает ограничивать запросы. Попробуйте меньше игроков или повторите позже.'}.get(e.code,'Ошибка FACEIT API ('+str(e.code)+').')
+                        raise ValueError(msg)
             out=[]
             for nickname in names:
                 p=get('https://open.faceit.com/data/v4/players?nickname='+urllib.parse.quote(nickname))
