@@ -45,19 +45,31 @@ class Handler(BaseHTTPRequestHandler):
                     if len(items)<100: break
                 def flat(item): return item.get('stats',item) if isinstance(item,dict) else {}
                 records=[]
+                rating_fields=set()
                 for item in stats:
                     s=flat(item)
+                    def walk(obj):
+                        if isinstance(obj,dict):
+                            for k,v in obj.items():
+                                yield str(k),v
+                                yield from walk(v)
+                        elif isinstance(obj,list):
+                            for v in obj: yield from walk(v)
+                    fields=list(walk(s))
+                    rating_fields.update(k for k,_ in fields if 'rating' in k.lower())
                     def pick(*keys):
-                        for k,v in s.items():
-                            if k.lower() in [a.lower() for a in keys]:
+                        wanted={''.join(c for c in a.lower() if c.isalnum()) for a in keys}
+                        for k,v in fields:
+                            normalized=''.join(c for c in k.lower() if c.isalnum())
+                            if normalized in wanted and 'hltv' not in normalized:
                                 try:return float(str(v).replace('%',''))
                                 except (ValueError,TypeError): pass
                         return None
-                    records.append({'rating':pick('Rating','FACEIT Rating','Player Rating'),'elo_change':pick('Elo','Elo change','Elo Change'),'kills':pick('Kills'),'deaths':pick('Deaths'),'wins':pick('Result')})
+                    records.append({'rating':pick('Rating','FACEIT Rating','Player Rating','Match Rating'),'elo_change':pick('Elo','Elo change'),'kills':pick('Kills'),'deaths':pick('Deaths'),'wins':pick('Result')})
                 def mean(key):
                     a=[r[key] for r in records if r[key] is not None]
                     return sum(a)/len(a) if a else None
-                out.append({'nickname':p.get('nickname',nickname),'player_id':pid,'level':game_data.get('skill_level',0),'elo':game_data.get('faceit_elo',0),'country':p.get('country',''),'matches':len(records),'rating_avg':mean('rating'),'rating_count':sum(r['rating'] is not None for r in records),'kills_avg':mean('kills'),'deaths_avg':mean('deaths'),'records':records})
+                out.append({'nickname':p.get('nickname',nickname),'player_id':pid,'level':game_data.get('skill_level',0),'elo':game_data.get('faceit_elo',0),'country':p.get('country',''),'matches':len(records),'rating_avg':mean('rating'),'rating_count':sum(r['rating'] is not None for r in records),'rating_fields':sorted(rating_fields),'kills_avg':mean('kills'),'deaths_avg':mean('deaths'),'records':records})
             self._json(200,{'players':out,'note':'FACEIT match stats are returned only within API availability and documented pagination. Import a full match export as CSV to extend coverage.'})
         except Exception as e: self._json(400,{'error':str(e)})
     def log_message(self,*args): pass
