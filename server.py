@@ -34,18 +34,29 @@ class Handler(BaseHTTPRequestHandler):
                         if e.code==429 and attempt<3:
                             time.sleep(2**attempt)
                             continue
-                        msg={401:'Неверный или отозванный API key.',403:'FACEIT запретил доступ к этому ресурсу.',404:'Игрок или данные не найдены.',429:'FACEIT продолжает ограничивать запросы. Попробуйте меньше игроков или повторите позже.'}.get(e.code,'Ошибка FACEIT API ('+str(e.code)+').')
+                        if e.code==404: raise LookupError('FACEIT вернул 404.')
+                        msg={401:'Неверный или отозванный API key.',403:'FACEIT запретил доступ к этому ресурсу.',429:'FACEIT продолжает ограничивать запросы. Попробуйте меньше игроков или повторите позже.'}.get(e.code,'Ошибка FACEIT API ('+str(e.code)+').')
                         raise ValueError(msg)
-            out=[]
+            out=[]; skipped=[]; stats_missing=[]
             for nickname in names:
-                p=get('https://open.faceit.com/data/v4/players?nickname='+urllib.parse.quote(nickname))
+                try:
+                    p=get('https://open.faceit.com/data/v4/players?nickname='+urllib.parse.quote(nickname))
+                except LookupError:
+                    skipped.append(nickname+' (профиль не найден)')
+                    continue
                 game_data=p.get('games',{}).get(game,{})
-                if not game_data: raise ValueError('Для '+nickname+' не найдена игра '+game+'.')
+                if not game_data:
+                    skipped.append(nickname+' (нет профиля '+game.upper()+')')
+                    continue
                 pid=p['player_id']; stats=[]
                 # FACEIT exposes match-level player stats in pages of up to 100.
                 # Its documented stats offset currently tops out at 200.
                 for offset in range(0,min(limit,300),100):
-                    page=get(f'https://open.faceit.com/data/v4/players/{pid}/games/{game}/stats?offset={offset}&limit=100')
+                    try:
+                        page=get(f'https://open.faceit.com/data/v4/players/{pid}/games/{game}/stats?offset={offset}&limit=100')
+                    except LookupError:
+                        stats_missing.append(p.get('nickname',nickname))
+                        break
                     items=page.get('items',[]); stats.extend(items)
                     if len(items)<100: break
                 def flat(item): return item.get('stats',item) if isinstance(item,dict) else {}
@@ -75,7 +86,8 @@ class Handler(BaseHTTPRequestHandler):
                     a=[r[key] for r in records if r[key] is not None]
                     return sum(a)/len(a) if a else None
                 out.append({'nickname':p.get('nickname',nickname),'player_id':pid,'level':game_data.get('skill_level',0),'elo':game_data.get('faceit_elo',0),'country':p.get('country',''),'matches':len(records),'rating_avg':mean('rating'),'rating_count':sum(r['rating'] is not None for r in records),'rating_fields':sorted(rating_fields),'kills_avg':mean('kills'),'deaths_avg':mean('deaths'),'records':records})
-            self._json(200,{'players':out,'note':'FACEIT match stats are returned only within API availability and documented pagination. Import a full match export as CSV to extend coverage.'})
+            if not out: raise ValueError('Не удалось загрузить ни одного CS2 профиля. Проверьте написание ников и выбранную игру.')
+            self._json(200,{'players':out,'skipped':skipped,'stats_missing':stats_missing,'note':'FACEIT match stats are returned only within API availability and documented pagination. Import a full match export as CSV to extend coverage.'})
         except Exception as e: self._json(400,{'error':str(e)})
     def log_message(self,*args): pass
 
