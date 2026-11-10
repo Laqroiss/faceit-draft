@@ -1,3 +1,3 @@
-nickname,level,elo,faceit_rating,matches,win_rate,kills_avg,deaths_avg,assists_avg,adr_avg,kast_avg,impact_avg,role
-player_one,7,1450,1.08,420,53,18.4,16.2,4.1,82.6,72.5,1.12,awper
-player_two,4,980,0.96,175,49,14.1,17.7,3.2,68.3,65.0,0.91,support
+nickname,level,elo,faceit_rating,matches,win_rate,kills_avg,deaths_avg,assists_avg,adr_avg,kast_avg,impact_avg,sniper_rate,sniper_kills,entry_rate,entry_count,entry_success,trade_share,trade_kills,utility_damage,flashes_per_round,enemies_flashed,survival,dpr,clutch_1v1,clutch_1v2,role
+player_one,7,1450,1.08,420,53,18.4,16.2,4.1,82.6,72.5,1.12,,,,,,,,,,,,,,,awper
+player_two,4,980,0.96,175,49,14.1,17.7,3.2,68.3,65.0,0.91,,,,,,,,,,,,,,,support
