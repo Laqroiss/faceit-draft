@@ -120,8 +120,28 @@ class Handler(BaseHTTPRequestHandler):
                 if kills_avg is None: kills_avg=mean('kills')
                 deaths_avg=mean('deaths'); assists_avg=mean('assists'); adr_avg=mean('adr')
                 kda_ratio=(kills_avg+assists_avg)/deaths_avg if kills_avg is not None and assists_avg is not None and deaths_avg not in (None,0) else None
-                role_metrics=['sniper_kills','sniper_rate','entry_count','entry_rate','entry_success','trade_kills','trade_share','utility_damage','flashes_per_round','enemies_flashed','survival','dpr','clutch_1v1','clutch_1v2','rounds']
-                out.append({'nickname':p.get('nickname',nickname),'player_id':pid,'level':game_data.get('skill_level',0),'elo':game_data.get('faceit_elo',0),'country':p.get('country',''),'matches':len(records),'rating_avg':match_rating if match_rating is not None else lifetime_rating,'rating_source':'matches' if match_rating is not None else ('profile lifetime' if lifetime_rating is not None else None),'rating_count':sum(r['rating'] is not None for r in records),'rating_fields':sorted(rating_fields),'kills_avg':kills_avg,'deaths_avg':deaths_avg,'assists_avg':assists_avg,'adr_avg':adr_avg,'kast_avg':mean('kast'),'impact_avg':mean('impact'),'role_metrics':{key:mean(key) for key in role_metrics},'kda_ratio':kda_ratio,'records':records})
+                role_metric_aliases={
+                    'sniper_kills':('Total Sniper Kills','Sniper Kills','AWP Kills'),
+                    'sniper_rate':('Sniper Kill Rate per Round','Sniper Kill Rate','Sniper Kills per Round','AWP Kills per Round'),
+                    'entry_count':('Total Entry Count','Entry Count','First Kills'),
+                    'entry_rate':('Entry Rate','Entry Count per Round'),
+                    'entry_success':('Entry Success Rate','Entry Win Rate'),
+                    'trade_kills':('Trade Kills','Total Trade Kills','Traded Kills'),
+                    'trade_share':('Trade Kill Share','Trade Share'),
+                    'utility_damage':('Utility Damage per Round','Utility Damage Rate','Utility ADR'),
+                    'flashes_per_round':('Flashes per Round','Flash per Round'),
+                    'enemies_flashed':('Enemies Flashed','Enemy Flashes'),
+                    'survival':('Survival Rate','Survival %'),
+                    'dpr':('Deaths per Round','DPR'),
+                    'clutch_1v1':('1v1 Win Rate','1v1 Clutch Win Rate'),
+                    'clutch_1v2':('1v2 Win Rate','1v2 Clutch Win Rate'),
+                    'rounds':('Rounds Played','Rounds')}
+                role_metrics={}
+                for key,aliases in role_metric_aliases.items():
+                    value=metric_value(lifetime,*aliases)
+                    role_metrics[key]=mean(key) if value is None else value
+                role_metric_fields=sorted({key for key,value in walk(lifetime) if any(tag in ''.join(c for c in key.lower() if c.isalnum()) for tag in ('sniper','awp','entry','trade','utility','flash','clutch','survival'))})
+                out.append({'nickname':p.get('nickname',nickname),'player_id':pid,'level':game_data.get('skill_level',0),'elo':game_data.get('faceit_elo',0),'country':p.get('country',''),'matches':len(records),'rating_avg':match_rating if match_rating is not None else lifetime_rating,'rating_source':'matches' if match_rating is not None else ('profile lifetime' if lifetime_rating is not None else None),'rating_count':sum(r['rating'] is not None for r in records),'rating_fields':sorted(rating_fields),'kills_avg':kills_avg,'deaths_avg':deaths_avg,'assists_avg':assists_avg,'adr_avg':adr_avg,'kast_avg':mean('kast'),'impact_avg':mean('impact'),'role_metrics':role_metrics,'role_metric_fields':role_metric_fields,'kda_ratio':kda_ratio,'records':records})
                 with PROGRESS_LOCK:
                     PROGRESS['done'] += 1
             with PROGRESS_LOCK:
