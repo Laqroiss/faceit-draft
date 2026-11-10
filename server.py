@@ -8,6 +8,7 @@ import time
 import threading
 
 ROOT = __import__('pathlib').Path(__file__).parent
+API_KEY_FILE = ROOT / '.faceit_api_key'
 PROGRESS = {'active': False, 'done': 0, 'total': 0, 'nickname': '', 'phase': 'idle'}
 PROGRESS_LOCK = threading.Lock()
 
@@ -28,7 +29,10 @@ class Handler(BaseHTTPRequestHandler):
         if urlparse(self.path).path != '/api/fetch': self.send_error(404); return
         try:
             req = json.loads(self.rfile.read(int(self.headers.get('Content-Length','0'))))
-            token = req.get('api_key','').strip(); names = req.get('players',[]); game = req.get('game','cs2'); limit = max(1,min(1000,int(req.get('match_limit',300))))
+            token = req.get('api_key','').strip()
+            if not token and API_KEY_FILE.is_file():
+                token = API_KEY_FILE.read_text(encoding='utf-8-sig').strip()
+            names = req.get('players',[]); game = req.get('game','cs2'); limit = max(1,min(1000,int(req.get('match_limit',300))))
             if not token: raise ValueError('Укажите FACEIT API key.')
             if not names or len(names)>80: raise ValueError('Добавьте от 1 до 80 участников.')
             with PROGRESS_LOCK:
