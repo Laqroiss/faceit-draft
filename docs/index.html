@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="FACEIT Draft помогает распределять участников CS2-турнира по сбалансированным командам и объясняет выбор капитанов.">
+  <title>FACEIT Draft — баланс турнира</title>
+  <style>
+    :root{color-scheme:dark;--bg:#101310;--panel:#191e18;--line:#30372f;--ink:#f2f4ee;--muted:#a1aa9d;--lime:#c1f36b;--gold:#ffbd79}
+    *{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 75% 15%,#283321 0,transparent 34%),var(--bg);color:var(--ink);font:16px/1.65 system-ui,-apple-system,"Segoe UI",sans-serif}
+    .wrap{width:min(1040px,calc(100% - 40px));margin:auto}.top{height:82px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line)}.brand{display:flex;align-items:center;gap:11px;font-weight:800;letter-spacing:.04em}.mark{width:36px;height:36px;display:grid;place-items:center;background:var(--lime);color:#19200f;border-radius:11px;font-weight:900}.tag{color:var(--muted);font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+    main{padding:90px 0 72px}.kicker{color:var(--lime);font-size:12px;font-weight:700;letter-spacing:.16em;text-transform:uppercase}.hero{max-width:760px}.hero h1{font-size:clamp(42px,8vw,76px);line-height:1.02;letter-spacing:-.065em;margin:20px 0}.hero p{font-size:18px;color:var(--muted);max-width:700px}.actions{display:flex;gap:12px;flex-wrap:wrap;margin:30px 0 0}.button{display:inline-block;border-radius:9px;padding:11px 16px;background:var(--lime);color:#19200f;font-weight:800;text-decoration:none}.button.secondary{background:transparent;color:var(--ink);border:1px solid var(--line)}
+    .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:70px}.card{background:linear-gradient(145deg,#1b201a,#151915);border:1px solid var(--line);border-radius:14px;padding:22px}.number{font:12px ui-monospace,monospace;color:var(--lime)}.card h2{font-size:17px;margin:14px 0 7px}.card p{margin:0;color:var(--muted);font-size:14px}.note{margin-top:16px;border-left:2px solid var(--gold);padding:4px 0 4px 16px;color:var(--muted);font-size:13px}.note strong{color:var(--gold)}footer{border-top:1px solid var(--line);padding:22px 0 34px;color:#7f897b;font-size:12px}
+    @media(max-width:700px){main{padding:62px 0 48px}.grid{grid-template-columns:1fr;margin-top:44px}.tag{display:none}.hero p{font-size:16px}}
+  </style>
+</head>
+<body><div class="wrap">
+  <header class="top"><div class="brand"><span class="mark">F</span><span>FACEIT DRAFT</span></div><div class="tag">Community tournament tool · CS2</div></header>
+  <main>
+    <section class="hero"><div class="kicker">Справедливый драфт для турнира</div><h1>Команды, в которых есть баланс.</h1><p>FACEIT Draft анализирует уровни и доступную статистику FACEIT, распределяет игроков по командам и показывает, почему получился именно такой состав.</p><div class="actions"><a class="button" href="https://developers.faceit.com/">FACEIT Developer Portal</a><a class="button secondary" href="#features">Возможности</a></div></section>
+    <section class="grid" id="features" aria-label="Возможности"><article class="card"><div class="number">01 / ДАННЫЕ</div><h2>Профиль и матчи</h2><p>Учитываются FACEIT level/Elo и средний FACEIT Rating из доступных матчевых данных. Можно загрузить собственный CSV.</p></article><article class="card"><div class="number">02 / БАЛАНС</div><h2>Равные составы</h2><p>Игроки распределяются по расчётной силе команды; алгоритм улучшает баланс обменом участников между составами.</p></article><article class="card"><div class="number">03 / ОТЧЁТ</div><h2>Понятный выбор</h2><p>Отчёт показывает силу команд, вклад игроков и статистического кандидата в капитаны. Результат можно скачать.</p></article></section>
+    <p class="note"><strong>О прозрачности:</strong> FACEIT не публикует точную формулу FACEIT Rating. Приложение использует готовый Rating, если API или импорт его предоставляют. Капитан выбирается по статистике; коммуникация и лидерские качества так не измеряются. Полнота истории зависит от доступных данных API.</p>
+  </main>
+  <footer>FACEIT Draft — независимый community-проект для подготовки CS2-турниров. Не является официальным продуктом FACEIT.</footer>
+</div></body></html>

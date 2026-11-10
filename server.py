@@ -1,0 +1,67 @@
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from urllib.parse import urlparse
+import json
+import urllib.error
+import urllib.parse
+import urllib.request
+
+ROOT = __import__('pathlib').Path(__file__).parent
+
+class Handler(BaseHTTPRequestHandler):
+    def _json(self, code, data):
+        body = json.dumps(data, ensure_ascii=False).encode()
+        self.send_response(code); self.send_header('Content-Type','application/json; charset=utf-8'); self.send_header('Content-Length',str(len(body))); self.end_headers(); self.wfile.write(body)
+    def do_GET(self):
+        path = ROOT / ('index.html' if urlparse(self.path).path == '/' else urlparse(self.path).path.lstrip('/'))
+        if not path.is_file() or ROOT not in path.resolve().parents:
+            self.send_error(404); return
+        body = path.read_bytes(); self.send_response(200); self.send_header('Content-Type','text/html; charset=utf-8'); self.send_header('Content-Length',str(len(body))); self.end_headers(); self.wfile.write(body)
+    def do_POST(self):
+        if urlparse(self.path).path != '/api/fetch': self.send_error(404); return
+        try:
+            req = json.loads(self.rfile.read(int(self.headers.get('Content-Length','0'))))
+            token = req.get('api_key','').strip(); names = req.get('players',[]); game = req.get('game','cs2'); limit = max(1,min(1000,int(req.get('match_limit',300))))
+            if not token: raise ValueError('Укажите FACEIT API key.')
+            if not names or len(names)>40: raise ValueError('Добавьте от 1 до 40 участников.')
+            headers={'Authorization':'Bearer '+token,'Accept':'application/json'}
+            def get(url):
+                r=urllib.request.Request(url,headers=headers)
+                try:
+                    with urllib.request.urlopen(r,timeout=25) as x: return json.loads(x.read())
+                except urllib.error.HTTPError as e:
+                    msg={401:'Неверный или отозванный API key.',403:'FACEIT запретил доступ к этому ресурсу.',404:'Игрок или данные не найдены.',429:'Лимит запросов FACEIT. Повторите позже.'}.get(e.code,'Ошибка FACEIT API ('+str(e.code)+').')
+                    raise ValueError(msg)
+            out=[]
+            for nickname in names:
+                p=get('https://open.faceit.com/data/v4/players?nickname='+urllib.parse.quote(nickname))
+                game_data=p.get('games',{}).get(game,{})
+                if not game_data: raise ValueError('Для '+nickname+' не найдена игра '+game+'.')
+                pid=p['player_id']; stats=[]
+                # FACEIT exposes match-level player stats in pages of up to 100.
+                # Its documented stats offset currently tops out at 200.
+                for offset in range(0,min(limit,300),100):
+                    page=get(f'https://open.faceit.com/data/v4/players/{pid}/games/{game}/stats?offset={offset}&limit=100')
+                    items=page.get('items',[]); stats.extend(items)
+                    if len(items)<100: break
+                def flat(item): return item.get('stats',item) if isinstance(item,dict) else {}
+                records=[]
+                for item in stats:
+                    s=flat(item)
+                    def pick(*keys):
+                        for k,v in s.items():
+                            if k.lower() in [a.lower() for a in keys]:
+                                try:return float(str(v).replace('%',''))
+                                except (ValueError,TypeError): pass
+                        return None
+                    records.append({'rating':pick('Rating','FACEIT Rating','Player Rating'),'elo_change':pick('Elo','Elo change','Elo Change'),'kills':pick('Kills'),'deaths':pick('Deaths'),'wins':pick('Result')})
+                def mean(key):
+                    a=[r[key] for r in records if r[key] is not None]
+                    return sum(a)/len(a) if a else None
+                out.append({'nickname':p.get('nickname',nickname),'player_id':pid,'level':game_data.get('skill_level',0),'elo':game_data.get('faceit_elo',0),'country':p.get('country',''),'matches':len(records),'rating_avg':mean('rating'),'rating_count':sum(r['rating'] is not None for r in records),'kills_avg':mean('kills'),'deaths_avg':mean('deaths'),'records':records})
+            self._json(200,{'players':out,'note':'FACEIT match stats are returned only within API availability and documented pagination. Import a full match export as CSV to extend coverage.'})
+        except Exception as e: self._json(400,{'error':str(e)})
+    def log_message(self,*args): pass
+
+if __name__ == '__main__':
+    print('Откройте http://127.0.0.1:8765')
+    ThreadingHTTPServer(('127.0.0.1',8765),Handler).serve_forever()
