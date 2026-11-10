@@ -137,9 +137,16 @@ class Handler(BaseHTTPRequestHandler):
                     'clutch_1v2':('1v2 Win Rate','1v2 Clutch Win Rate'),
                     'rounds':('Rounds Played','Rounds')}
                 role_metrics={}
+                lifetime_matches=metric_value(lifetime,'Matches','Match Count','Total Matches') or len(records) or 1
+                lifetime_count_fields={'sniper_kills','entry_count','trade_kills','enemies_flashed'}
                 for key,aliases in role_metric_aliases.items():
                     value=metric_value(lifetime,*aliases)
-                    role_metrics[key]=mean(key) if value is None else value
+                    if value is None:
+                        role_metrics[key]=mean(key)
+                    elif key in lifetime_count_fields:
+                        role_metrics[key]=value/max(1,lifetime_matches)
+                    else:
+                        role_metrics[key]=value
                 role_metric_fields=sorted({key for key,value in walk(lifetime) if any(tag in ''.join(c for c in key.lower() if c.isalnum()) for tag in ('sniper','awp','entry','trade','utility','flash','clutch','survival'))})
                 out.append({'nickname':p.get('nickname',nickname),'player_id':pid,'level':game_data.get('skill_level',0),'elo':game_data.get('faceit_elo',0),'country':p.get('country',''),'matches':len(records),'rating_avg':match_rating if match_rating is not None else lifetime_rating,'rating_source':'matches' if match_rating is not None else ('profile lifetime' if lifetime_rating is not None else None),'rating_count':sum(r['rating'] is not None for r in records),'rating_fields':sorted(rating_fields),'kills_avg':kills_avg,'deaths_avg':deaths_avg,'assists_avg':assists_avg,'adr_avg':adr_avg,'kast_avg':mean('kast'),'impact_avg':mean('impact'),'role_metrics':role_metrics,'role_metric_fields':role_metric_fields,'kda_ratio':kda_ratio,'records':records})
                 with PROGRESS_LOCK:
