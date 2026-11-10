@@ -66,6 +66,14 @@ class Handler(BaseHTTPRequestHandler):
                             try: values.append(float(str(value).replace('%','')))
                             except (ValueError,TypeError): pass
                     return (sum(values)/len(values) if values else None),found
+                def metric_value(obj,*aliases):
+                    wanted={''.join(c for c in name.lower() if c.isalnum()) for name in aliases}
+                    for key,value in walk(obj):
+                        normalized=''.join(c for c in key.lower() if c.isalnum())
+                        if normalized in wanted:
+                            try:return float(str(value).replace('%',''))
+                            except (ValueError,TypeError): pass
+                    return None
                 # FACEIT exposes match-level player stats in pages of up to 100.
                 # Its documented stats offset currently tops out at 200.
                 for offset in range(0,min(limit,300),100):
@@ -83,17 +91,9 @@ class Handler(BaseHTTPRequestHandler):
                     s=flat(item)
                     fields=list(walk(s))
                     rating_fields.update(k for k,_ in fields if 'rating' in k.lower())
-                    def pick(*keys):
-                        wanted={''.join(c for c in a.lower() if c.isalnum()) for a in keys}
-                        for k,v in fields:
-                            normalized=''.join(c for c in k.lower() if c.isalnum())
-                            if normalized in wanted and 'hltv' not in normalized:
-                                try:return float(str(v).replace('%',''))
-                                except (ValueError,TypeError): pass
-                        return None
                     match_rating,match_rating_fields=rating_value(s)
                     rating_fields.update(match_rating_fields)
-                    records.append({'rating':match_rating,'elo_change':pick('Elo','Elo change'),'kills':pick('Kills'),'deaths':pick('Deaths'),'wins':pick('Result')})
+                    records.append({'rating':match_rating,'elo_change':metric_value(s,'Elo change','Elo'),'kills':metric_value(s,'Kills','Total Kills'),'avg_kills':metric_value(s,'Average Kills','Avg Kills'),'deaths':metric_value(s,'Deaths','Total Deaths','Average Deaths','Avg Deaths'),'assists':metric_value(s,'Assists','Total Assists','Average Assists','Avg Assists'),'adr':metric_value(s,'ADR','Average ADR','Damage per Round'),'wins':metric_value(s,'Result')})
                 lifetime={}
                 try:
                     lifetime=get(f'https://open.faceit.com/data/v4/players/{pid}/stats/{game}')
@@ -105,7 +105,11 @@ class Handler(BaseHTTPRequestHandler):
                     a=[r[key] for r in records if r[key] is not None]
                     return sum(a)/len(a) if a else None
                 match_rating=mean('rating')
-                out.append({'nickname':p.get('nickname',nickname),'player_id':pid,'level':game_data.get('skill_level',0),'elo':game_data.get('faceit_elo',0),'country':p.get('country',''),'matches':len(records),'rating_avg':match_rating if match_rating is not None else lifetime_rating,'rating_source':'matches' if match_rating is not None else ('profile lifetime' if lifetime_rating is not None else None),'rating_count':sum(r['rating'] is not None for r in records),'rating_fields':sorted(rating_fields),'kills_avg':mean('kills'),'deaths_avg':mean('deaths'),'records':records})
+                kills_avg=mean('avg_kills')
+                if kills_avg is None: kills_avg=mean('kills')
+                deaths_avg=mean('deaths'); assists_avg=mean('assists'); adr_avg=mean('adr')
+                kda_ratio=(kills_avg+assists_avg)/deaths_avg if kills_avg is not None and assists_avg is not None and deaths_avg not in (None,0) else None
+                out.append({'nickname':p.get('nickname',nickname),'player_id':pid,'level':game_data.get('skill_level',0),'elo':game_data.get('faceit_elo',0),'country':p.get('country',''),'matches':len(records),'rating_avg':match_rating if match_rating is not None else lifetime_rating,'rating_source':'matches' if match_rating is not None else ('profile lifetime' if lifetime_rating is not None else None),'rating_count':sum(r['rating'] is not None for r in records),'rating_fields':sorted(rating_fields),'kills_avg':kills_avg,'deaths_avg':deaths_avg,'assists_avg':assists_avg,'adr_avg':adr_avg,'kda_ratio':kda_ratio,'records':records})
             if not out: raise ValueError('Не удалось загрузить ни одного CS2 профиля. Проверьте написание ников и выбранную игру.')
             self._json(200,{'players':out,'skipped':skipped,'stats_missing':stats_missing,'note':'FACEIT match stats are returned only within API availability and documented pagination. Import a full match export as CSV to extend coverage.'})
         except Exception as e: self._json(400,{'error':str(e)})

@@ -1,3 +1,3 @@
-nickname,level,elo,faceit_rating,matches,win_rate
-player_one,7,1450,1.08,420,53
-player_two,4,980,0.96,175,49
+nickname,level,elo,faceit_rating,matches,win_rate,kills_avg,deaths_avg,assists_avg,adr_avg
+player_one,7,1450,1.08,420,53,18.4,16.2,4.1,82.6
+player_two,4,980,0.96,175,49,14.1,17.7,3.2,68.3
