@@ -93,7 +93,7 @@ class Handler(BaseHTTPRequestHandler):
                     rating_fields.update(k for k,_ in fields if 'rating' in k.lower())
                     match_rating,match_rating_fields=rating_value(s)
                     rating_fields.update(match_rating_fields)
-                    records.append({'rating':match_rating,'elo_change':metric_value(s,'Elo change','Elo'),'kills':metric_value(s,'Kills','Total Kills'),'avg_kills':metric_value(s,'Average Kills','Avg Kills'),'deaths':metric_value(s,'Deaths','Total Deaths','Average Deaths','Avg Deaths'),'assists':metric_value(s,'Assists','Total Assists','Average Assists','Avg Assists'),'adr':metric_value(s,'ADR','Average ADR','Damage per Round'),'wins':metric_value(s,'Result')})
+                    records.append({'rating':match_rating,'elo_change':metric_value(s,'Elo change','Elo'),'kills':metric_value(s,'Kills','Total Kills'),'avg_kills':metric_value(s,'Average Kills','Avg Kills'),'deaths':metric_value(s,'Deaths','Total Deaths','Average Deaths','Avg Deaths'),'assists':metric_value(s,'Assists','Total Assists','Average Assists','Avg Assists'),'adr':metric_value(s,'ADR','Average ADR','Damage per Round'),'kast':metric_value(s,'KAST','KAST %','KAST%'),'impact':metric_value(s,'Impact','Impact Rating'),'wins':metric_value(s,'Result')})
                 lifetime={}
                 try:
                     lifetime=get(f'https://open.faceit.com/data/v4/players/{pid}/stats/{game}')
@@ -109,7 +109,7 @@ class Handler(BaseHTTPRequestHandler):
                 if kills_avg is None: kills_avg=mean('kills')
                 deaths_avg=mean('deaths'); assists_avg=mean('assists'); adr_avg=mean('adr')
                 kda_ratio=(kills_avg+assists_avg)/deaths_avg if kills_avg is not None and assists_avg is not None and deaths_avg not in (None,0) else None
-                out.append({'nickname':p.get('nickname',nickname),'player_id':pid,'level':game_data.get('skill_level',0),'elo':game_data.get('faceit_elo',0),'country':p.get('country',''),'matches':len(records),'rating_avg':match_rating if match_rating is not None else lifetime_rating,'rating_source':'matches' if match_rating is not None else ('profile lifetime' if lifetime_rating is not None else None),'rating_count':sum(r['rating'] is not None for r in records),'rating_fields':sorted(rating_fields),'kills_avg':kills_avg,'deaths_avg':deaths_avg,'assists_avg':assists_avg,'adr_avg':adr_avg,'kda_ratio':kda_ratio,'records':records})
+                out.append({'nickname':p.get('nickname',nickname),'player_id':pid,'level':game_data.get('skill_level',0),'elo':game_data.get('faceit_elo',0),'country':p.get('country',''),'matches':len(records),'rating_avg':match_rating if match_rating is not None else lifetime_rating,'rating_source':'matches' if match_rating is not None else ('profile lifetime' if lifetime_rating is not None else None),'rating_count':sum(r['rating'] is not None for r in records),'rating_fields':sorted(rating_fields),'kills_avg':kills_avg,'deaths_avg':deaths_avg,'assists_avg':assists_avg,'adr_avg':adr_avg,'kast_avg':mean('kast'),'impact_avg':mean('impact'),'kda_ratio':kda_ratio,'records':records})
             if not out: raise ValueError('Не удалось загрузить ни одного CS2 профиля. Проверьте написание ников и выбранную игру.')
             self._json(200,{'players':out,'skipped':skipped,'stats_missing':stats_missing,'note':'FACEIT match stats are returned only within API availability and documented pagination. Import a full match export as CSV to extend coverage.'})
         except Exception as e: self._json(400,{'error':str(e)})
